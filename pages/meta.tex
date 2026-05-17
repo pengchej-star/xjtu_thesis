@@ -50,7 +50,7 @@
 
 % 关键词，中文。用全角分号「；」分割
 % 研究生的应首先从《汉语主题词表》中摘选
-\ckeywords{}
+\ckeywords{长时序预测；TimeMixer；多尺度建模；深度可分离卷积；通道混合}
 
 % 提交日期
 \cproddate{{\color{black}\the\year} 年\ {\color{black}\twodigits{\the\month}} 月}
@@ -72,7 +72,7 @@
 \esupervisor{}
 
 % 关键词，英文。用半角分号和一个半角空格「; 」分割
-\ekeywords{Wikipedia; Free encyclopedia; Winner; Good morning}
+\ekeywords{Long-term time series forecasting; TimeMixer; Multiscale modeling; Depthwise separable convolution; Channel mixing}
 
 % 学科门类，英文
 % 从Philosophy（哲学）、Economics（经济学）、Law（法学）、Education（教育学）、Arts（文学）、
@@ -90,9 +90,8 @@
 \etype{}
 
 % 摘要，中文。段间空行
-\cabstract{测试摘要是什么
-}
+\cabstract{长时序预测是电力负荷调度、交通流量管控和气象监测等场景中的关键技术，其目标是根据历史观测序列预测未来较长时间范围内的变化趋势。针对实际时间序列普遍存在的非平稳性、多尺度波动和多变量耦合问题，现有模型往往难以兼顾预测精度与计算效率。TimeMixer 作为一种轻量级多尺度预测模型，在长时序预测任务中表现出较好的效率优势，但仍存在平均池化下采样易丢失高频突变信息、固定窗口分解难以适应动态周期变化、通道独立策略忽略变量间相关性等不足。本文拟在 TimeMixer 框架基础上进行改进，引入基于深度可分离卷积的可学习下采样模块，以增强模型对关键突变特征的保留能力；设计多核门控分解模块，以自适应融合不同尺度的趋势与季节信息；同时加入通道混合机制，以建模多变量之间的隐式依赖关系。通过在电力、交通、气象等公开数据集上的对比实验与消融实验，本文将验证所提方法在预测精度、模型效率和复杂场景适应性方面的有效性。}
 
 % 摘要，英文。段间空行
 \eabstract{
-what is zhai yao}
+Long-term time series forecasting is a key technique for power load scheduling, traffic flow management, weather monitoring, and other real-world applications. Its goal is to predict future trends over a long horizon from historical observations. However, practical time series data often contain non-stationary patterns, multiscale fluctuations, and complex dependencies among variables, making it difficult for existing models to balance forecasting accuracy and computational efficiency. TimeMixer is an efficient multiscale forecasting model, but its average-pooling downsampling may lose high-frequency abrupt changes, its fixed-window decomposition is not flexible enough for dynamic periodic patterns, and its channel-independent design weakens the modeling of inter-variable correlations. Based on TimeMixer, this thesis proposes an improved forecasting framework with a learnable downsampling module based on depthwise separable convolution, a multi-kernel gated decomposition module, and a channel mixing mechanism. Experiments on public datasets from power, traffic, and weather scenarios will be conducted to evaluate the effectiveness of the proposed method in terms of accuracy, efficiency, and adaptability.}
