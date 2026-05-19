@@ -1,29 +1,4 @@
 % meta.tex
-%
-% Aetf <aetf@unlimitedcodeworks.xyz>
-% Copyright 2016 Aetf <aetf@unlimitedcodeworks.xyz>
-%
-% multiple1902 <multiple1902@gmail.com>
-% Copyright 2011~2012, multiple1902 (Weisi Dai)
-%
-% Project Home: https://github.com/Aetf/xjtuthesis
-%
-% It is strongly recommended that you read documentations located at
-%   https://github.com/Aetf/xjtuthesis/wiki
-% in advance of your compilation if you have not read them before.
-%
-% This work may be distributed and/or modified under the
-% conditions of the LaTeX Project Public License, either version 1.3
-% of this license or (at your option) any later version.
-% The latest version of this license is in
-%   http://www.latex-project.org/lppl.txt
-% and version 1.3 or later is part of all distributions of LaTeX
-% version 2005/12/01 or later.
-%
-% This work has the LPPL maintenance status `maintained'.
-%
-% The Current Maintainer of this work is Aetf.
-%
 
 % 标题，中文
 \ctitle{基于多尺度混合增强的时序数据预测模型研究与应用}
@@ -49,49 +24,48 @@
 \csupervisor{王鸽}
 
 % 关键词，中文。用全角分号「；」分割
-% 研究生的应首先从《汉语主题词表》中摘选
-\ckeywords{长时序预测；TimeMixer；多尺度建模；深度可分离卷积；通道混合}
+\ckeywords{时序数据预测；TimeMixer；多尺度混合；多核门控分解；通道混合}
 
 % 提交日期
 \cproddate{{\color{black}\the\year} 年\ {\color{black}\twodigits{\the\month}} 月}
 
 % 论文类型，中文，本科生不需要
-% 从理论研究、应用基础、应用研究、研究报告、软件开发、设计报告、案例分析、调研报告、其它中选择
 \ctype{}
 
 % 论文标题，英文
-\etitle{An Awesome Paper Title}
+\etitle{Research and Application of a Time Series Forecasting Model Enhanced by Multi-scale Mixing}
 
 % 作者姓名，英文
-\eauthor{Author Name}
+\eauthor{Pengcheng Jing}
 
 % 学科，英文，本科生不需要
 \esubject{}
 
 % 导师姓名，英文
-\esupervisor{}
+\esupervisor{Ge Wang}
 
 % 关键词，英文。用半角分号和一个半角空格「; 」分割
-\ekeywords{Long-term time series forecasting; TimeMixer; Multiscale modeling; Depthwise separable convolution; Channel mixing}
+\ekeywords{Time series forecasting; TimeMixer; Multi-scale mixing; Multi-kernel gated decomposition; Channel mixing}
 
 % 学科门类，英文
-% 从Philosophy（哲学）、Economics（经济学）、Law（法学）、Education（教育学）、Arts（文学）、
-%   Science（理学）、Engineering Science（工学）、Medicine（医学）、Management Science（管理学）中选择 
-\ecate{}
+\ecate{Engineering Science}
 
 % 提交日期，英文，本科生不需要
-% 应当和 cproddate 保持一致
 \eproddate{\monthname{\month}\ \the\year}
 
 % 论文类型，英文，本科生不需要
-% 从Theoretical Research（理论研究）、Application Fundamentals（应用基础）、Applied Research（应用研究）、
-%   Research Report（研究报告）、Software Development（软件开发）、Design Report（设计报告）、
-%   Case Study（案例分析）、Investigation Report（调研报告）、其它（Other）中选择
 \etype{}
 
 % 摘要，中文。段间空行
-\cabstract{长时序预测是电力负荷调度、交通流量管控和气象监测等场景中的关键技术，其目标是根据历史观测序列预测未来较长时间范围内的变化趋势。针对实际时间序列普遍存在的非平稳性、多尺度波动和多变量耦合问题，现有模型往往难以兼顾预测精度与计算效率。TimeMixer 作为一种轻量级多尺度预测模型，在长时序预测任务中表现出较好的效率优势，但仍存在平均池化下采样易丢失高频突变信息、固定窗口分解难以适应动态周期变化、通道独立策略忽略变量间相关性等不足。本文拟在 TimeMixer 框架基础上进行改进，引入基于深度可分离卷积的可学习下采样模块，以增强模型对关键突变特征的保留能力；设计多核门控分解模块，以自适应融合不同尺度的趋势与季节信息；同时加入通道混合机制，以建模多变量之间的隐式依赖关系。通过在电力、交通、气象等公开数据集上的对比实验与消融实验，本文将验证所提方法在预测精度、模型效率和复杂场景适应性方面的有效性。}
+\cabstract{时序数据预测是数据分析中的重要任务，在电力负荷调度、交通流量管理和气象预测等场景中具有广泛应用。TimeMixer 是一种轻量级多尺度时序预测模型，通过多尺度分解与混合机制在预测精度和计算效率之间取得了较好平衡。然而，原始 TimeMixer 仍存在平均池化下采样可能丢失高频信息、固定窗口分解难以适应复杂周期变化、通道独立策略忽略变量间相关性等问题。针对上述不足，本文围绕 TimeMixer 模型进行了多尺度混合增强设计与实验分析。
+
+本文主要完成了三个方面的工作。首先，设计了深度可分离卷积下采样模块，以可学习卷积替代固定平均池化，使模型在构建多尺度序列时能够更灵活地保留局部关键特征。其次，提出了多核门控分解模块，并行使用多个不同窗口大小的滑动平均操作提取趋势信息，再通过门控网络自适应融合不同尺度的分解结果，以增强模型对多周期模式的适应能力。最后，引入低秩 MLP 形式的通道混合模块，在保持模型轻量化的同时增强变量间信息交互能力。
+
+实验部分在 ETTh1、ETTh2、ETTm1、ETTm2、Weather、ECL、Traffic 和 Solar 等 8 个公开数据集上进行，预测长度设置为 96、192、336 和 720，评价指标采用 MSE 和 MAE。为分析不同模块的作用，本文构造了 M0、M1、M2、M3、M12、M13、M23 和 M4 共 8 个模型变体，完成了全组合消融实验。实验结果表明，多核门控分解模块 M2 的综合表现最稳定，在多个数据集和预测长度上取得较好结果，是本文最主要的有效改进。深度可分离下采样和通道混合模块在部分场景中具有一定效果，但整体稳定性不足。完整模型 M4 并未在所有场景下取得最优，说明不同改进模块之间存在一定耦合关系。本文工作验证了多尺度混合增强思路在时序数据预测模型改进中的作用，也为后续轻量级预测模型的结构优化和应用分析提供了参考。}
 
 % 摘要，英文。段间空行
-\eabstract{
-Long-term time series forecasting is a key technique for power load scheduling, traffic flow management, weather monitoring, and other real-world applications. Its goal is to predict future trends over a long horizon from historical observations. However, practical time series data often contain non-stationary patterns, multiscale fluctuations, and complex dependencies among variables, making it difficult for existing models to balance forecasting accuracy and computational efficiency. TimeMixer is an efficient multiscale forecasting model, but its average-pooling downsampling may lose high-frequency abrupt changes, its fixed-window decomposition is not flexible enough for dynamic periodic patterns, and its channel-independent design weakens the modeling of inter-variable correlations. Based on TimeMixer, this thesis proposes an improved forecasting framework with a learnable downsampling module based on depthwise separable convolution, a multi-kernel gated decomposition module, and a channel mixing mechanism. Experiments on public datasets from power, traffic, and weather scenarios will be conducted to evaluate the effectiveness of the proposed method in terms of accuracy, efficiency, and adaptability.}
+\eabstract{Time series forecasting is an important task in data analysis and has been widely used in electric load scheduling, traffic flow management, weather forecasting, and other real-world applications. TimeMixer is a lightweight multi-scale forecasting model that achieves a good balance between prediction accuracy and computational efficiency through multi-scale decomposition and mixing. However, the original TimeMixer still has several limitations. Average pooling used in the down-sampling stage may smooth out high-frequency information, fixed-window decomposition is not flexible enough to handle complex periodic patterns, and the channel-independent strategy ignores correlations among variables. To address these issues, this thesis enhances the TimeMixer model from the perspective of multi-scale mixing and analyzes the effects of different modules through experiments.
+
+The main work of this thesis includes three parts. First, a depthwise-separable convolution down-sampling module is designed to replace fixed average pooling with learnable convolutional operations, so that the model can preserve local key features more flexibly when constructing multi-scale sequences. Second, a multi-kernel gated decomposition module is proposed. It uses multiple moving-average kernels with different window sizes in parallel and applies a lightweight gating network to adaptively fuse decomposition results at different scales, improving the model's ability to capture multi-period patterns. Third, a low-rank MLP-based channel mixing module is introduced to enhance interactions among variables while maintaining the lightweight structure of the model.
+
+Experiments are conducted on eight public datasets, including ETTh1, ETTh2, ETTm1, ETTm2, Weather, ECL, Traffic, and Solar. The prediction lengths are set to 96, 192, 336, and 720, and MSE and MAE are used as evaluation metrics. To analyze the contribution of each module, eight model variants are constructed, including M0, M1, M2, M3, M12, M13, M23, and M4. The experimental results show that the multi-kernel gated decomposition module, namely M2, achieves the most stable overall performance and is the most effective improvement in this work. The depthwise-separable down-sampling module and the channel mixing module are useful in some cases but are less stable across all datasets. The complete model M4 does not always achieve the best performance, indicating that there may be coupling effects among different modules. This work verifies the value of multi-scale mixing enhancement for time series forecasting models and provides a useful reference for further model optimization and application analysis.}

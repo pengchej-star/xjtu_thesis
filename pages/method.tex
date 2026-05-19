@@ -1,0 +1,98 @@
+% method.tex
+
+\chapter{基于TimeMixer的改进模型设计}
+\echapter{Improved TimeMixer Model Design}
+
+\section{改进模型总体框架}
+\esection{Overall Framework}
+
+本文的改进工作以原始 TimeMixer 为基础，不重新设计一套完全不同的预测框架，而是在原有多尺度分解混合结构上进行局部增强。这样做的原因有两点：一方面，TimeMixer 本身已经具有较好的轻量化特点和多尺度建模能力；另一方面，局部改进便于通过消融实验分析每个模块的作用，更符合本科毕业设计中“实现、验证、分析”的要求。
+
+本文将改进方向概括为三个模块。第一个模块是深度可分离卷积下采样，记为 A，用于替代原始模型中的平均池化下采样。第二个模块是多核门控分解，记为 B，用于替代单一固定窗口的滑动平均分解。第三个模块是通道混合，记为 C，用于在通道独立建模之前引入一次变量间信息交互。三个模块分别对应原始模型中的多尺度构建、序列分解和变量处理环节。
+
+从代码实现角度看，本文尽量保持原项目结构不变。深度可分离卷积下采样模块、多核门控分解模块和通道混合模块分别接入下采样、分解和输入处理环节。三个模块均通过命令行参数控制，分别对应 \texttt{conv\_ds}、\texttt{multi\_gated} 和 \texttt{channel\_mixing} 开关。这样能够避免维护多份模型代码，也方便构造不同消融变体。
+
+\section{深度可分离卷积下采样模块}
+\esection{Depthwise Separable Convolution Down-sampling}
+
+原始 TimeMixer 在构建多尺度序列时默认使用平均池化。平均池化可以表示为对局部窗口内时间点进行等权平均：
+\begin{equation}
+    y_t = \frac{1}{k}\sum_{i=0}^{k-1} x_{t+i},
+\end{equation}
+其中 $k$ 为池化窗口大小。该操作没有可学习参数，计算稳定，但无法根据数据特征自动调整不同时间点的重要性。
+
+为缓解这一问题，本文设计了深度可分离卷积下采样模块。该模块输入张量形状为 $(B,C,T)$，其中 $B$ 为批大小，$C$ 为变量数，$T$ 为时间长度。模块结构为：
+\begin{equation}
+    \mathrm{DWConv1d} \rightarrow \mathrm{LayerNorm} \rightarrow \mathrm{GELU} \rightarrow \mathrm{PWConv1d}.
+\end{equation}
+其中，逐通道卷积（Depthwise Conv1d）在每个变量内部沿时间维度提取局部特征，并通过步长完成下采样；LayerNorm 用于稳定中间特征分布；GELU 激活提供非线性表达能力；逐点卷积（Pointwise Conv1d）使用 $1 \times 1$ 卷积对通道信息进行线性变换。
+
+与普通卷积相比，深度可分离卷积将时间局部特征提取和通道映射拆开，参数量和计算量更低。与平均池化相比，它的卷积核可通过训练更新，因此下采样过程不再是固定平滑，而是具有一定任务适应性。本文并不认为该模块一定在所有数据集上优于平均池化，因为对于本身较平滑的数据，平均池化的平滑作用也可能有利。本文实验正是通过 M1 变体单独验证该模块的实际作用。
+
+\section{多核门控分解模块}
+\esection{Multi-kernel Gated Decomposition}
+
+原始 TimeMixer 使用滑动平均分解序列，将输入拆分为季节项和趋势项。固定窗口滑动平均可以得到较稳定的趋势估计，但窗口大小一旦确定，就难以同时兼顾短期波动和长期趋势。实际数据中，不同数据集的周期结构差异明显，即使在同一数据集中，不同时间段的变化尺度也可能不同。
+
+为增强分解模块的适应能力，本文提出多核门控分解模块。该模块并行使用多个移动平均窗口，当前代码中窗口大小为 $(3,11,37)$。对于输入序列 $\mathbf{X}$，首先通过三个不同窗口得到趋势候选：
+\begin{equation}
+    \mathbf{T}_j = \mathrm{AvgPool}_{k_j}(\mathbf{X}), \quad k_j \in \{3,11,37\}.
+\end{equation}
+随后，模块根据输入序列的全局均值特征生成门控权重：
+\begin{equation}
+    \boldsymbol{\alpha} = \mathrm{softmax}(\mathbf{W}\cdot \mathrm{Mean}(\mathbf{X})+\mathbf{b}),
+\end{equation}
+其中 $\boldsymbol{\alpha}$ 表示不同窗口的融合权重。最终趋势项为：
+\begin{equation}
+    \mathbf{T} = \sum_{j=1}^{3} \alpha_j \mathbf{T}_j,
+\end{equation}
+季节项则由原始输入减去趋势项得到：
+\begin{equation}
+    \mathbf{S} = \mathbf{X} - \mathbf{T}.
+\end{equation}
+
+该模块的特点是结构较轻，只在原有移动平均分解基础上增加了多窗口并行和一个小型门控网络。代码中门控线性层采用零初始化，使训练初期不同窗口权重接近均匀分布，从而减少对原始模型训练动态的扰动。与固定单窗口相比，多核门控分解能够根据输入序列特征调整不同尺度趋势估计的贡献，因此更适合处理周期结构复杂的数据。后续实验表明，M2 是本文表现最稳定的改进模块。
+
+\section{通道混合模块}
+\esection{Channel Mixing Module}
+
+原始 TimeMixer 默认采用通道独立策略，即将多变量时间序列中的每个变量拆分为独立序列进行处理。这种策略可以降低模型复杂度，尤其适合变量数较多的数据集。但它也带来一个问题：模型在主干结构中难以显式利用变量之间的相关性。对于气象、交通、电力等多变量数据，变量间关系往往具有实际意义，因此完全忽略这部分信息可能限制模型性能。
+
+本文在输入阶段加入通道混合模块。具体而言，在序列归一化之后、通道独立拆分之前，对变量维度使用一个低秩 MLP 进行残差映射：
+\begin{equation}
+    \tilde{\mathbf{X}} = \mathbf{X} + f_{cm}(\mathbf{X}),
+\end{equation}
+其中
+\begin{equation}
+    f_{cm}(\mathbf{X}) = \mathbf{W}_2 \cdot \mathrm{GELU}(\mathbf{W}_1 \mathbf{X}).
+\end{equation}
+在实现中，第一层线性映射将变量维度从 \texttt{enc\_in} 降到 $\min(64,\mathrm{enc\_in})$，第二层再映射回原变量维度。这样可以在控制参数量的同时完成一次变量间信息交换。
+
+通道混合层采用残差形式，目的是避免新增模块对原始输入造成过强扰动。代码中最后一层线性层也采用零初始化，使训练开始时该模块近似恒等映射。需要说明的是，本文通道混合只在输入阶段进行一次浅层交互，因此它的建模能力有限。第 4 章实验显示，该模块在部分场景中有效，但整体稳定性不如多核门控分解。
+
+\section{模型变体与消融设计}
+\esection{Model Variants and Ablation Design}
+
+为了分析三个模块的独立贡献和组合效果，本文构造了 8 个模型变体，如表 \ref{tab:variants} 所示。其中 M0 表示原始 TimeMixer，M1、M2、M3 分别表示只加入一个模块，M12、M13、M23 表示两两组合，M4 表示三个模块全部加入。
+
+\begin{table}[htbp]
+    \centering
+    \caption{模型变体设置表}
+    \label{tab:variants}
+    \begin{tabular}{ccccc}
+        \toprule
+        变体 & 深度可分离下采样A & 多核门控分解B & 通道混合C & 含义 \\
+        \midrule
+        M0 & 否 & 否 & 否 & 原始 TimeMixer \\
+        M1 & 是 & 否 & 否 & 仅替换下采样 \\
+        M2 & 否 & 是 & 否 & 仅替换分解模块 \\
+        M3 & 否 & 否 & 是 & 仅加入通道混合 \\
+        M12 & 是 & 是 & 否 & A+B \\
+        M13 & 是 & 否 & 是 & A+C \\
+        M23 & 否 & 是 & 是 & B+C \\
+        M4 & 是 & 是 & 是 & 三模块完整模型 \\
+        \bottomrule
+    \end{tabular}
+\end{table}
+
+这种设计覆盖了三个二值模块的全部组合。通过 M0 与 M1、M2、M3 的比较，可以观察单个模块独立加入后的效果；通过 M4 与 M12、M13、M23 的比较，可以观察完整模型去掉某个模块后的变化；通过所有变体的总体胜出次数，可以判断哪一类改进更稳定。本文后续实验结论显示，模块组合并不一定带来线性叠加收益，这也是本文结果分析中的一个重要发现。

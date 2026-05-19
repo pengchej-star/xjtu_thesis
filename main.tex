@@ -35,6 +35,8 @@
     %autolineskip, % if set, latex will change lineskip to fill the page or it will strictly follow the set lineskip by default which is more like what Word does
     ]{xjtuthesis}
 
+\usepackage{multirow}
+
 \graphicspath{{figures/}}
 
 \begin{document}
@@ -56,8 +58,15 @@
 
         % 绪论
         \input{pages/intro.tex}
-        
-        % 以同样方法添加更多章节
+
+        % 相关理论与原始模型
+        \input{pages/theory.tex}
+
+        % 改进模型设计
+        \input{pages/method.tex}
+
+        % 实验设计与结果分析
+        \input{pages/experiment.tex}
 
         % 结论与展望
         \input{pages/conclusion.tex}
