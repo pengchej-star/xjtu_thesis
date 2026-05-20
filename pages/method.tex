@@ -12,6 +12,33 @@
 
 从代码实现角度看，本文尽量保持原项目结构不变。深度可分离卷积下采样模块、多核门控分解模块和通道混合模块分别接入下采样、分解和输入处理环节。三个模块均通过命令行参数控制，分别对应 \texttt{conv\_ds}、\texttt{multi\_gated} 和 \texttt{channel\_mixing} 开关。这样能够避免维护多份模型代码，也方便构造不同消融变体。
 
+本文改进模型的整体流程可以概括为：首先对输入序列进行归一化和必要的通道处理；随后根据下采样参数构建多尺度序列；接着在各尺度上进行趋势项和季节项分解，并通过 TimeMixer 原有的跨尺度混合结构传播不同尺度的信息；最后由未来多尺度预测融合模块得到输出结果。本文三个改进模块均嵌入在上述流程中，而不是改变预测任务的输入输出形式。这样做可以保证 M0 与各改进变体之间具有较好的可比性。
+
+\begin{figure}[htbp]
+    \centering
+    \fbox{\parbox[c][0.26\textheight][c]{0.86\textwidth}{\centering 改进模型整体框架图占位\\后续补充正式结构图}}
+    \caption{改进TimeMixer模型整体框架图占位}
+    \label{fig:improved_framework_placeholder}
+\end{figure}
+
+为便于说明论文方法与代码实现之间的对应关系，表 \ref{tab:module_code_mapping} 给出了三个改进模块的主要接入位置和控制参数。需要说明的是，表中的文件路径按照当前项目结构记录，后续如果代码目录移动，应以实际目录为准。
+
+\begin{table}[htbp]
+    \centering
+    \caption{改进模块与代码实现对应关系}
+    \label{tab:module_code_mapping}
+    \resizebox{\textwidth}{!}{%
+    \begin{tabular}{cccl}
+        \toprule
+        模块 & 接入环节 & 控制参数 & 主要作用 \\
+        \midrule
+        深度可分离卷积下采样 & 多尺度构建 & \texttt{--down\_sampling\_method conv\_ds} & 替代平均池化下采样 \\
+        多核门控分解 & 趋势/季节分解 & \texttt{--decomp\_method multi\_gated} & 使用多窗口自适应估计趋势项 \\
+        通道混合 & 输入处理 & \texttt{--channel\_mixing 1} & 在通道独立建模前引入变量交互 \\
+        \bottomrule
+    \end{tabular}}
+\end{table}
+
 \section{深度可分离卷积下采样模块}
 \esection{Depthwise Separable Convolution Down-sampling}
 
@@ -53,6 +80,13 @@
 
 该模块的特点是结构较轻，只在原有移动平均分解基础上增加了多窗口并行和一个小型门控网络。代码中门控线性层采用零初始化，使训练初期不同窗口权重接近均匀分布，从而减少对原始模型训练动态的扰动。与固定单窗口相比，多核门控分解能够根据输入序列特征调整不同尺度趋势估计的贡献，因此更适合处理周期结构复杂的数据。后续实验表明，M2 是本文表现最稳定的改进模块。
 
+\begin{figure}[htbp]
+    \centering
+    \fbox{\parbox[c][0.22\textheight][c]{0.82\textwidth}{\centering 多核门控分解模块图占位\\后续补充正式模块图}}
+    \caption{多核门控分解模块结构图占位}
+    \label{fig:multi_gated_placeholder}
+\end{figure}
+
 \section{通道混合模块}
 \esection{Channel Mixing Module}
 
@@ -70,10 +104,17 @@
 
 通道混合层采用残差形式，目的是避免新增模块对原始输入造成过强扰动。代码中最后一层线性层也采用零初始化，使训练开始时该模块近似恒等映射。需要说明的是，本文通道混合只在输入阶段进行一次浅层交互，因此它的建模能力有限。第 4 章实验显示，该模块在部分场景中有效，但整体稳定性不如多核门控分解。
 
+\begin{figure}[htbp]
+    \centering
+    \fbox{\parbox[c][0.20\textheight][c]{0.82\textwidth}{\centering 通道混合模块图占位\\后续补充正式模块图}}
+    \caption{通道混合模块结构图占位}
+    \label{fig:channel_mixing_placeholder}
+\end{figure}
+
 \section{模型变体与消融设计}
 \esection{Model Variants and Ablation Design}
 
-为了分析三个模块的独立贡献和组合效果，本文构造了 8 个模型变体，如表 \ref{tab:variants} 所示。其中 M0 表示原始 TimeMixer，M1、M2、M3 分别表示只加入一个模块，M12、M13、M23 表示两两组合，M4 表示三个模块全部加入。
+为了分析三个模块的独立贡献和组合效果，本文构造了 8 个模型变体，如表 \ref{tab:variants} 所示。其中 M0 表示本文自跑的原始 TimeMixer 基线模型，M1、M2、M3 分别表示只加入一个模块，M12、M13、M23 表示两两组合，M4 表示三个模块全部加入。
 
 \begin{table}[htbp]
     \centering
@@ -83,7 +124,7 @@
         \toprule
         变体 & 深度可分离下采样A & 多核门控分解B & 通道混合C & 含义 \\
         \midrule
-        M0 & 否 & 否 & 否 & 原始 TimeMixer \\
+        M0 & 否 & 否 & 否 & 自跑 TimeMixer 基线 \\
         M1 & 是 & 否 & 否 & 仅替换下采样 \\
         M2 & 否 & 是 & 否 & 仅替换分解模块 \\
         M3 & 否 & 否 & 是 & 仅加入通道混合 \\
