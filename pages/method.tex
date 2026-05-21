@@ -16,9 +16,9 @@
 
 \begin{figure}[htbp]
     \centering
-    \fbox{\parbox[c][0.26\textheight][c]{0.86\textwidth}{\centering 改进模型整体框架图占位\\后续补充正式结构图}}
-    \caption{改进TimeMixer模型整体框架图占位}
-    \label{fig:improved_framework_placeholder}
+    \includegraphics[width=0.98\textwidth]{image/improved_timemixer_overall_clear_lines.png}
+    \caption{改进TimeMixer模型整体框架图}
+    \label{fig:improved_framework}
 \end{figure}
 
 为便于说明论文方法与代码实现之间的对应关系，表 \ref{tab:module_code_mapping} 给出了三个改进模块的主要接入位置和控制参数。需要说明的是，表中的文件路径按照当前项目结构记录，后续如果代码目录移动，应以实际目录为准。
@@ -55,6 +55,12 @@
 其中，逐通道卷积（Depthwise Conv1d）在每个变量内部沿时间维度提取局部特征，并通过步长完成下采样；LayerNorm 用于稳定中间特征分布；GELU 激活提供非线性表达能力；逐点卷积（Pointwise Conv1d）使用 $1 \times 1$ 卷积对通道信息进行线性变换。
 
 与普通卷积相比，深度可分离卷积将时间局部特征提取和通道映射拆开，参数量和计算量更低。与平均池化相比，它的卷积核可通过训练更新，因此下采样过程不再是固定平滑，而是具有一定任务适应性。本文并不认为该模块一定在所有数据集上优于平均池化，因为对于本身较平滑的数据，平均池化的平滑作用也可能有利。本文实验正是通过 M1 变体单独验证该模块的实际作用。
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=0.95\textwidth]{image/depthwise_separable_downsampling.png}
+    \caption{深度可分离卷积下采样模块结构图}
+    \label{fig:depthwise_separable_downsampling}
+\end{figure}
 
 \section{多核门控分解模块}
 \esection{Multi-kernel Gated Decomposition}
@@ -82,9 +88,9 @@
 
 \begin{figure}[htbp]
     \centering
-    \fbox{\parbox[c][0.22\textheight][c]{0.82\textwidth}{\centering 多核门控分解模块图占位\\后续补充正式模块图}}
-    \caption{多核门控分解模块结构图占位}
-    \label{fig:multi_gated_placeholder}
+    \includegraphics[width=0.98\textwidth]{image/gate.png}
+    \caption{多核门控分解模块结构图}
+    \label{fig:multi_gated_decomposition}
 \end{figure}
 
 \section{通道混合模块}
@@ -106,9 +112,9 @@
 
 \begin{figure}[htbp]
     \centering
-    \fbox{\parbox[c][0.20\textheight][c]{0.82\textwidth}{\centering 通道混合模块图占位\\后续补充正式模块图}}
-    \caption{通道混合模块结构图占位}
-    \label{fig:channel_mixing_placeholder}
+    \includegraphics[width=0.95\textwidth]{image/channel_mixing_module.png}
+    \caption{通道混合模块结构图}
+    \label{fig:channel_mixing_module}
 \end{figure}
 
 \section{模型变体与消融设计}

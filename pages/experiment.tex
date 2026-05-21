@@ -6,7 +6,7 @@
 \section{实验环境与参数设置}
 \esection{Experimental Setup}
 
-本文实验基于修改后的 TimeMixer 项目完成。根据项目记录，主要实验在 AutoDL 云平台的 RTX 4090 GPU 环境上运行，代码基于 PyTorch 实现\cite{paszke2019pytorch}。当前项目中的关键结果文件保存在结果表目录中，包括完整 8 变体实验结果和各变体胜出次数统计。
+本文实验基于修改后的 TimeMixer 项目完成。根据项目记录，主要实验在 AutoDL 云平台的 RTX 4090 D GPU 环境上运行，代码基于 PyTorch 实现\cite{paszke2019pytorch}。具体环境为 Python 3.10.8、PyTorch 2.1.2+cu121、CUDA 12.1，GPU 为 NVIDIA GeForce RTX 4090 D，显存为 24564 MiB，驱动版本为 570.124.04，操作系统内核为 Linux 5.15.0-60-generic。当前项目中的关键结果文件保存在结果表目录中，包括完整 8 变体实验结果和各变体胜出次数统计。
 
 实验任务为时序数据多步预测。输入序列长度统一设置为 96，预测长度分别设置为 96、192、336 和 720。模型训练默认使用代码中的 MSE 损失函数，评价时统计 MSE 和 MAE 两项指标。为保证消融实验尽量公平，在同一数据集和同一预测长度下，除对应改进模块开关外，其余主要参数保持一致。
 
@@ -79,7 +79,7 @@ MSE 对较大误差更敏感，能够反映模型是否出现明显预测偏差�
 \section{外部模型对比实验}
 \esection{Comparison with External Baselines}
 
-为了观察本文自跑结果在常见时序预测模型中的大致位置，本文补充整理了外部模型对比结果。外部模型数据来自 TimeMixer 原论文复现结果整理文件，本文只使用其中 PatchTST、Autoformer、DLinear、TimesNet、FEDformer 和 Crossformer 六类模型的数据，不使用该文件中的 TimeMixer 列。本文的 TimeMixer 基线统一采用自跑 M0 数据。由于外部模型结果并非本文重新训练得到，因此本节只作为参考性横向对比，不将其表述为完全公平的统一复现实验。
+为了观察本文自跑结果在常见时序预测模型中的大致位置，本文补充整理了外部模型对比结果。外部模型数据来自 TimeMixer 原论文长预测结果图，项目中对应文件为 \texttt{TimeMixer-main/figures/long\_results.png}。本文只使用其中 PatchTST、Autoformer、DLinear、TimesNet、FEDformer 和 Crossformer 六类模型的数据，不使用该图中的 TimeMixer 列。本文的 TimeMixer 基线统一采用自跑 M0 数据。由于外部模型结果并非本文重新训练得到，因此本节只作为参考性横向对比，不将其表述为完全公平的统一复现实验。
 
 表 \ref{tab:external_avg} 给出了各数据集在 4 个预测长度上的平均结果。表中 M0、M1、M2 和 M4 来自本文实验结果，其中 M0 为自跑 TimeMixer 基线，M1 为仅加入深度可分离下采样模块的变体，M2 为仅加入多核门控分解模块的变体，M4 为三模块完整模型。外部模型的完整预测长度明细见附录。
 
@@ -117,9 +117,9 @@ MSE 对较大误差更敏感，能够反映模型是否出现明显预测偏差�
 
 \begin{figure}[htbp]
     \centering
-    \fbox{\parbox[c][0.22\textheight][c]{0.82\textwidth}{\centering 各变体胜出次数柱状图占位\\后续根据胜出次数统计补充正式图}}
-    \caption{各模型变体最优次数柱状图占位}
-    \label{fig:wins_placeholder}
+    \includegraphics[width=0.95\textwidth]{image/ablation_wins_bar_chart.png}
+    \caption{各模型变体最优次数柱状图}
+    \label{fig:wins_bar_chart}
 \end{figure}
 
 \section{单模块消融实验分析}
@@ -179,9 +179,9 @@ M3 的通道混合模块也表现出一定局部性。该模块在 Weather 等�
 
 \begin{figure}[htbp]
     \centering
-    \fbox{\parbox[c][0.22\textheight][c]{0.82\textwidth}{\centering 代表性数据集MSE/MAE对比图占位\\后续根据实验结果补充正式图}}
-    \caption{代表性数据集预测误差对比图占位}
-    \label{fig:representative_compare_placeholder}
+    \includegraphics[width=0.92\textwidth]{image/traffic_pl96_sample4_forecast.png}
+    \caption{Traffic数据集上M0与M2的代表性预测结果对比}
+    \label{fig:traffic_prediction_case}
 \end{figure}
 
 \section{应用场景分析}
