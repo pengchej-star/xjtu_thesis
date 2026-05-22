@@ -50,7 +50,7 @@ TimeMixer 是一种基于多尺度分解混合思想的时间序列预测模型\
 \begin{figure}[htbp]
     \centering
     \includegraphics[width=0.82\textwidth]{thesis/fig_timemixer_original_framework.png}
-    \caption{TimeMixer原始模型结构示意图}
+    \caption{TimeMixer原始模型结构示意图（改绘自文献\cite{wang2023timemixer}）}
     \label{fig:timemixer_overall}
 \end{figure}
 
@@ -63,7 +63,7 @@ TimeMixer 首先对输入序列进行多尺度处理。给定原始输入 $\math
 \end{equation}
 其中 $\mathbf{X}^{0}$ 为原始尺度，$\mathbf{X}^{i}$ 表示第 $i$ 个下采样尺度，$M$ 为下采样层数。随着尺度加深，序列长度逐渐缩短，时间分辨率降低。
 
-原始代码中默认下采样方式为平均池化。平均池化的优点是实现简单且不会引入额外参数，但它对局部窗口内的所有时间点进行等权平均。对于时序数据预测任务，这种方式能够平滑噪声，但也可能削弱局部突变。本文的第一个改进模块正是围绕这一环节展开。
+原始 TimeMixer 默认下采样方式为平均池化。平均池化的优点是实现简单且不会引入额外参数，但它对局部窗口内的所有时间点进行等权平均。对于时序数据预测任务，这种方式能够平滑噪声，但也可能削弱局部突变。本文的第一个改进模块正是围绕这一环节展开。
 
 \subsection{过去可分解混合模块}
 \esubsection{Past-Decomposable-Mixing Block}
@@ -75,8 +75,6 @@ TimeMixer 首先对输入序列进行多尺度处理。给定原始输入 $\math
 其中 $\mathbf{S}^{i}$ 为季节项，$\mathbf{T}^{i}$ 为趋势项。
 
 TimeMixer 对季节项采用自底向上的混合方式。高分辨率序列保留更多局部变化信息，因此季节项从高分辨率向低分辨率传递，有助于将细粒度波动逐步融入较粗尺度表示。相反，趋势项主要反映长期变化方向，模型采用自顶向下的混合方式，让低分辨率中的宏观趋势信息回传到高分辨率表示中。这种双向混合结构使模型能够在不使用复杂注意力机制的情况下整合多个时间尺度的信息。
-
-在代码中，季节项混合、趋势项混合和过去可分解混合分别由对应模块实现。本文提出的多核门控分解模块主要替换其中的分解环节；在旧版基准实现中，该模块也用于进入编码器前的预分解，使趋势项估计不再依赖单一固定窗口。
 
 \subsection{未来多尺度预测融合模块}
 \esubsection{Future-Multipredictor-Mixing Block}

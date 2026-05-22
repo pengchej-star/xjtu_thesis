@@ -28,7 +28,7 @@ def main() -> None:
 
     plt.rcParams.update(
         {
-            "font.family": "Arial",
+            "font.sans-serif": ["Microsoft YaHei", "SimHei", "Noto Sans CJK SC", "Arial Unicode MS", "DejaVu Sans"],
             "axes.unicode_minus": False,
             "figure.dpi": 160,
             "savefig.dpi": 300,
@@ -37,13 +37,13 @@ def main() -> None:
 
     fig, ax = plt.subplots(figsize=(10.5, 5.8))
 
-    bars_mse = ax.bar([i - width for i in x], df["MSEWins"], width, label="MSE wins", color="#3b82f6")
-    bars_mae = ax.bar(x, df["MAEWins"], width, label="MAE wins", color="#10b981")
-    bars_total = ax.bar([i + width for i in x], df["TotalWins"], width, label="Total wins", color="#f59e0b")
+    bars_mse = ax.bar([i - width for i in x], df["MSEWins"], width, label="MSE最优次数", color="#3b82f6")
+    bars_mae = ax.bar(x, df["MAEWins"], width, label="MAE最优次数", color="#10b981")
+    bars_total = ax.bar([i + width for i in x], df["TotalWins"], width, label="总最优次数", color="#f59e0b")
 
-    ax.set_title("Best-count statistics of model variants", fontsize=16, pad=14)
-    ax.set_xlabel("Model variant", fontsize=12)
-    ax.set_ylabel("Number of best results", fontsize=12)
+    ax.set_title("各模型变体最优次数统计", fontsize=16, pad=14)
+    ax.set_xlabel("模型变体", fontsize=12)
+    ax.set_ylabel("最优次数", fontsize=12)
     ax.set_xticks(list(x), variants)
     ax.set_ylim(0, max(df["TotalWins"]) + 4)
     ax.grid(axis="y", linestyle="--", alpha=0.35)
