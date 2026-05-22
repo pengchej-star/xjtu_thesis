@@ -10,7 +10,7 @@ import pandas as pd
 def parse_args() -> argparse.Namespace:
     repo_root = Path(__file__).resolve().parents[1]
     default_input = repo_root / "TimeMixer-main" / "results" / "paper_table_full_ablation" / "ablation_wins.csv"
-    default_output = repo_root / "image" / "ablation_wins_bar_chart.png"
+    default_output = repo_root / "figures" / "thesis" / "fig_ablation_wins_bar_chart.png"
 
     parser = argparse.ArgumentParser(description="Generate the ablation win-count bar chart.")
     parser.add_argument("--input", type=Path, default=default_input, help="Path to ablation_wins.csv")

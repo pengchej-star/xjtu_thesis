@@ -16,7 +16,7 @@
 
 \begin{figure}[htbp]
     \centering
-    \includegraphics[width=0.98\textwidth]{image/improved_timemixer_overall_clear_lines_new.png}
+    \includegraphics[width=0.98\textwidth]{thesis/fig_improved_timemixer_framework.png}
     \caption{改进TimeMixer模型整体框架图}
     \label{fig:improved_framework}
 \end{figure}
@@ -57,7 +57,7 @@
 与普通卷积相比，深度可分离卷积将时间局部特征提取和通道映射拆开，参数量和计算量更低。与平均池化相比，它的卷积核可通过训练更新，因此下采样过程不再是固定平滑，而是具有一定任务适应性。本文并不认为该模块一定在所有数据集上优于平均池化，因为对于本身较平滑的数据，平均池化的平滑作用也可能有利。本文实验正是通过 M1 变体单独验证该模块的实际作用。
 \begin{figure}[htbp]
     \centering
-    \includegraphics[width=0.95\textwidth]{image/depthwise_separable_downsampling.png}
+    \includegraphics[width=0.95\textwidth]{thesis/fig_depthwise_separable_downsampling.png}
     \caption{深度可分离卷积下采样模块结构图}
     \label{fig:depthwise_separable_downsampling}
 \end{figure}
@@ -88,7 +88,7 @@
 
 \begin{figure}[htbp]
     \centering
-    \includegraphics[width=0.98\textwidth]{image/gate.png}
+    \includegraphics[width=0.98\textwidth]{thesis/fig_multi_kernel_gated_decomposition.png}
     \caption{多核门控分解模块结构图}
     \label{fig:multi_gated_decomposition}
 \end{figure}
@@ -112,7 +112,7 @@
 
 \begin{figure}[htbp]
     \centering
-    \includegraphics[width=0.95\textwidth]{image/channel_mixing_module.png}
+    \includegraphics[width=0.95\textwidth]{thesis/fig_channel_mixing_module.png}
     \caption{通道混合模块结构图}
     \label{fig:channel_mixing_module}
 \end{figure}
