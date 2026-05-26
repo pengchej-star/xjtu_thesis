@@ -1,7 +1,7 @@
 % method.tex
 
-\chapter{基于TimeMixer的改进模型设计}
-\echapter{Improved TimeMixer Model Design}
+\chapter{基于TimeMixer的时序预测模型设计}
+\echapter{Time Series Forecasting Model Design Based on TimeMixer}
 
 \section{改进模型总体框架}
 \esection{Overall Framework}
@@ -13,6 +13,46 @@
 
 本文改进模型的整体流程可以概括为：首先根据下采样参数构建多尺度输入序列；随后对各尺度序列分别进行归一化，并在启用通道混合时，于通道独立拆分和嵌入之前进行一次浅层变量交互；接着在各尺度上进行趋势项和季节项分解，并通过 TimeMixer 原有的跨尺度混合结构传播不同尺度的信息；最后由未来多尺度预测融合模块得到输出结果。本文三个改进模块均嵌入在上述流程中，而不是改变预测任务的输入输出形式，因此 M0 与各改进变体之间具有较好的可比性。
 这种设计方式也决定了本文采用全组合消融实验，而不是只比较 M0 与 M4。完整模型 M4 同时包含三个模块，能够反映结构最完整时的结果，但它无法说明具体收益来自哪一个环节，也无法判断不同模块之间是否存在相互干扰。通过 M1、M2、M3 可以分别观察单模块的独立作用；通过 M12、M13、M23 可以进一步观察两两组合是否产生互补；再与 M4 对照，则可以分析三个模块同时加入时是否带来线性叠加收益。这样的消融设计使后续实验结论更容易对应到具体结构，而不是只停留在整体误差变化上。
+
+从张量维度看，本文模型输入记为 $\mathbf{X}\in\mathbb{R}^{B\times T\times C}$，其中 $B$ 表示批大小，$T$ 表示输入序列长度，$C$ 表示变量数；模型输出记为 $\hat{\mathbf{Y}}\in\mathbb{R}^{B\times H\times C}$，其中 $H$ 为预测长度。多尺度构建阶段将原始输入扩展为 $\{\mathbf{X}^{0},\mathbf{X}^{1},\cdots,\mathbf{X}^{M}\}$，第 $i$ 个尺度的时间长度约为 $T/2^i$。当启用深度可分离卷积下采样时，长度缩短由步长为 2 的一维卷积完成；当不启用该模块时，则沿用平均池化下采样。无论采用哪种下采样方式，变量维度 $C$ 在进入通道独立建模前保持不变。
+
+三个改进模块在 TimeMixer 中的嵌入位置可以进一步说明如下。深度可分离卷积下采样位于多尺度序列构建阶段，作用对象是原始输入及逐级下采样序列；多核门控分解替换趋势/季节分解环节，既用于多尺度输入进入主干前的分解，也用于过去可分解混合模块内部的分解操作；通道混合位于多尺度序列归一化之后、通道独立拆分与嵌入之前，用于对每个时间步的变量向量进行一次低秩残差映射。这样的插入方式使三个模块分别对应原模型的输入尺度处理、趋势估计和变量关系处理，不改变预测头和损失函数。
+
+\begin{table}[htbp]
+    \centering
+    \caption{改进模型前向计算过程}
+    \label{tab:forward_process}
+    \begin{tabularx}{\textwidth}{@{}cX@{}}
+        \toprule
+        \multicolumn{1}{c}{步骤} & \multicolumn{1}{c}{计算过程} \\
+        \midrule
+        1 & 输入历史序列 $\mathbf{X}\in\mathbb{R}^{B\times T\times C}$ \\
+        2 & 通过平均池化或深度可分离卷积构建多尺度序列 $\{\mathbf{X}^{i}\}_{i=0}^{M}$ \\
+        3 & 对各尺度序列进行归一化，若启用通道混合则进行低秩残差变量映射 \\
+        4 & 对每个尺度执行移动平均分解或多核门控分解，得到趋势项和季节项 \\
+        5 & 在 TimeMixer 主干中分别进行季节项自底向上混合和趋势项自顶向下混合 \\
+        6 & 对各尺度表示进行预测并融合，得到 $\hat{\mathbf{Y}}\in\mathbb{R}^{B\times H\times C}$ \\
+        \bottomrule
+    \end{tabularx}
+\end{table}
+
+从参数量和复杂度角度看，本文三个模块均采用轻量化设计。M1 的深度可分离卷积将普通一维卷积分解为逐通道卷积和逐点卷积，减少了时间卷积部分的通道耦合开销；M2 的多核门控分解主要增加多个滑动平均窗口和一个标量到 3 维权重的线性门控层；M3 的通道混合采用低秩 MLP，隐层维度取 $r=\min(64,C)$，避免在变量维度上直接使用高成本全连接映射。表 \ref{tab:module_complexity} 给出了三个模块的主要参数来源。
+
+\begin{table}[htbp]
+    \centering
+    \caption{改进模块参数量与复杂度说明}
+    \label{tab:module_complexity}
+    \resizebox{\textwidth}{!}{%
+    \begin{tabular}{@{}C{0.18\textwidth}C{0.25\textwidth}C{0.18\textwidth}L{0.36\textwidth}@{}}
+        \toprule
+        \multicolumn{1}{c}{模块} & \multicolumn{1}{c}{主要新增参数} & \multicolumn{1}{c}{近似参数量} & \multicolumn{1}{c}{复杂度特点} \\
+        \midrule
+        深度可分离卷积下采样 & Depthwise Conv1d 与 Pointwise Conv1d & $Ck+C^2$ & 相比普通卷积 $C^2k$，减少时间卷积部分的通道耦合 \\
+        多核门控分解 & 多窗口滑动平均与门控线性层 & 约 $1\times3+3$ & 移动平均本身无可学习参数，门控层开销较小 \\
+        通道混合 & 低秩两层 MLP & 约 $2Cr$，$r=\min(64,C)$ & 在变量维度做浅层交互，避免完整高维映射过重 \\
+        \bottomrule
+    \end{tabular}}
+\end{table}
 
 \begin{figure}[htbp]
     \centering
@@ -28,9 +68,9 @@
     \caption{改进模块功能对应关系}
     \label{tab:module_code_mapping}
     \resizebox{\textwidth}{!}{%
-    \begin{tabular}{cccl}
+    \begin{tabular}{@{}C{0.18\textwidth}C{0.20\textwidth}C{0.24\textwidth}L{0.34\textwidth}@{}}
         \toprule
-        模块 & 对应环节 & 改进方式 & 主要作用 \\
+        \multicolumn{1}{c}{模块} & \multicolumn{1}{c}{对应环节} & \multicolumn{1}{c}{改进方式} & \multicolumn{1}{c}{主要作用} \\
         \midrule
         深度可分离卷积下采样 & 多尺度构建 & 可学习卷积下采样 & 提升下采样过程的局部特征提取能力 \\
         多核门控分解 & 趋势/季节分解 & 多窗口趋势估计与门控融合 & 增强分解模块对不同周期尺度的适应性 \\
@@ -56,6 +96,39 @@
 其中，逐通道卷积（Depthwise Conv1d）在每个变量内部沿时间维度提取局部特征，并通过步长完成下采样；LayerNorm 用于稳定中间特征分布；GELU 激活提供非线性表达能力；逐点卷积（Pointwise Conv1d）使用 $1 \times 1$ 卷积对通道信息进行线性变换。
 本文没有直接采用普通一维卷积替代平均池化，主要是考虑到多变量时间序列的变量数可能较多。普通卷积会同时在时间维度和通道维度上进行混合，参数量随输入通道和输出通道同时增加，在 ECL、Traffic 等高维数据集上容易带来额外开销。深度可分离卷积将这一过程拆成两步：Depthwise Conv1d 只在每个变量内部沿时间方向提取局部模式，关注短期变化和局部形态；Pointwise Conv1d 再对通道表示做线性映射，用较低成本调整特征空间。这样既保留了可学习下采样的能力，又避免把下采样模块设计得过重。
 
+在具体运行过程中，原始多尺度构建阶段的输入形状为 $\mathbf{X}\in\mathbb{R}^{B\times T\times C}$。由于一维卷积通常以通道维在前的形式计算，模块先将其转置为 $\mathbf{Z}\in\mathbb{R}^{B\times C\times T}$。设卷积核大小为 $k$，下采样步长为 $s$，第 $c$ 个变量对应的逐通道卷积核为 $\mathbf{w}^{(c)}\in\mathbb{R}^{k}$，则逐通道卷积可以写为：
+\begin{equation}
+    \mathbf{H}_{b,c,t}=\sum_{r=0}^{k-1}\mathbf{w}_{r}^{(c)}\mathbf{Z}_{b,c,ts+r-p},
+\end{equation}
+其中 $p=(k-1)/2$ 表示填充长度。本文实现中 $k=3$，步长 $s$ 等于下采样窗口；当输入长度能够被 $s$ 整除时，输出时间长度为 $T/s$。该操作只在单个变量内部沿时间维度进行卷积，不在此阶段直接混合不同变量。
+
+随后，模块将 $\mathbf{H}$ 转回 $(B,T_{\mathrm{out}},C)$ 形式，并在变量维度上进行 LayerNorm 和 GELU 激活：
+\begin{equation}
+    \mathbf{U}_{b,t,:}=\mathrm{GELU}\big(\mathrm{LayerNorm}(\mathbf{H}_{b,:,t})\big).
+\end{equation}
+最后，逐点卷积对每个时间步的通道表示进行线性映射：
+\begin{equation}
+    \mathbf{Y}_{b,t,:}=\mathbf{W}_{p}\mathbf{U}_{b,t,:},
+\end{equation}
+其中 $\mathbf{W}_{p}\in\mathbb{R}^{C\times C}$。从功能上看，Depthwise Conv1d 负责“沿时间下采样并提取局部模式”，Pointwise Conv1d 负责“对下采样后的通道表示做轻量映射”。该设计与通道混合模块不同：M1 的通道映射只作为下采样模块内部的表示调整，而 M3 则专门在通道独立建模前引入变量交互。
+
+\begin{table}[htbp]
+    \centering
+    \caption{深度可分离卷积下采样模块运行流程}
+    \label{tab:m1_flow}
+    \resizebox{\textwidth}{!}{%
+    \begin{tabular}{@{}C{0.16\textwidth}C{0.28\textwidth}C{0.26\textwidth}L{0.24\textwidth}@{}}
+        \toprule
+        \multicolumn{1}{c}{步骤} & \multicolumn{1}{c}{输入输出形状} & \multicolumn{1}{c}{操作} & \multicolumn{1}{c}{作用} \\
+        \midrule
+        维度变换 & $(B,T,C)\rightarrow(B,C,T)$ & 将变量维作为卷积通道 & 适配一维卷积计算格式 \\
+        逐通道卷积 & $(B,C,T)\rightarrow(B,C,T_{\mathrm{out}})$ & $k=3$、步长为 $s$、groups=$C$ & 在每个变量内部提取局部时间模式并完成下采样 \\
+        归一化与激活 & $(B,T_{\mathrm{out}},C)\rightarrow(B,T_{\mathrm{out}},C)$ & LayerNorm 与 GELU & 稳定特征分布并加入非线性 \\
+        逐点卷积 & $(B,C,T_{\mathrm{out}})\rightarrow(B,C,T_{\mathrm{out}})$ & $1\times1$ 卷积 & 对下采样后的通道表示做轻量映射 \\
+        \bottomrule
+    \end{tabular}}
+\end{table}
+
 与普通卷积相比，深度可分离卷积将时间局部特征提取和通道映射拆开，参数量和计算量更低。与平均池化相比，它的卷积核可通过训练更新，因此下采样过程不再是固定平滑，而是具有一定任务适应性。本文并不认为该模块一定在所有数据集上优于平均池化，因为对于本身较平滑的数据，平均池化的平滑作用也可能有利。本文实验正是通过 M1 变体单独验证该模块的实际作用。
 \begin{figure}[htbp]
     \centering
@@ -76,12 +149,17 @@
     \mathbf{T}_j = \mathrm{AvgPool}_{k_j}(\mathbf{X}), \quad k_j \in \{3,11,37\}.
 \end{equation}
 此处 $\mathrm{AvgPool}$ 表示步长为 1、输出长度保持不变的滑动平均操作，用于趋势提取，不用于降低时间分辨率。
-随后，模块对每个样本在时间维和变量维上求全局均值，得到样本级标量特征，并由线性层和 Softmax 生成对应的门控权重：
+随后，模块对每个样本在时间维和变量维上求全局均值，得到样本级标量特征：
+\begin{equation}
+    g^{(b)}=\mathrm{Mean}_{T,C}(\mathbf{X}^{(b)})
+    =\frac{1}{TC}\sum_{t=1}^{T}\sum_{c=1}^{C}\mathbf{X}^{(b)}_{t,c}.
+\end{equation}
+该标量进入线性层，得到三个窗口对应的融合 logits，再由 Softmax 生成门控权重：
 门控权重使用样本级全局均值生成，而不是引入更复杂的注意力网络或逐时间点门控，是为了控制模块复杂度。全局均值虽然只提供较粗粒度的信息，但它能够反映样本整体水平和不同样本之间的尺度差异；线性层和 Softmax 则将这一标量特征映射为三个窗口的归一化权重。Softmax 的作用在于使不同窗口贡献具有可比较的比例关系，避免融合权重无限放大，并使最终趋势项可以被理解为多个趋势候选的加权平均。
 \begin{equation}
-    \boldsymbol{\alpha}^{(b)} = \mathrm{softmax}(\mathbf{W}\cdot \mathrm{Mean}_{T,C}(\mathbf{X}^{(b)})+\mathbf{b}),
+    \boldsymbol{\alpha}^{(b)} = \mathrm{softmax}(\mathbf{W}_{g}g^{(b)}+\mathbf{b}_{g}),
 \end{equation}
-其中 $\boldsymbol{\alpha}^{(b)}$ 表示第 $b$ 个样本在不同窗口上的融合权重。最终趋势项为：
+其中 $\mathbf{W}_{g}\in\mathbb{R}^{3\times1}$，$\mathbf{b}_{g}\in\mathbb{R}^{3}$，$\boldsymbol{\alpha}^{(b)}=[\alpha_1^{(b)},\alpha_2^{(b)},\alpha_3^{(b)}]$ 表示第 $b$ 个样本在不同窗口上的融合权重。最终趋势项为：
 \begin{equation}
     \mathbf{T}^{(b)} = \sum_{j=1}^{3} \alpha_j^{(b)} \mathbf{T}_j^{(b)},
 \end{equation}
@@ -89,6 +167,24 @@
 \begin{equation}
     \mathbf{S}^{(b)} = \mathbf{X}^{(b)} - \mathbf{T}^{(b)}.
 \end{equation}
+
+\begin{table}[htbp]
+    \centering
+    \caption{多核门控分解模块运行流程}
+    \label{tab:m2_flow}
+    \resizebox{\textwidth}{!}{%
+    \begin{tabular}{@{}C{0.16\textwidth}C{0.28\textwidth}C{0.28\textwidth}L{0.22\textwidth}@{}}
+        \toprule
+        \multicolumn{1}{c}{步骤} & \multicolumn{1}{c}{输入输出} & \multicolumn{1}{c}{操作} & \multicolumn{1}{c}{作用} \\
+        \midrule
+        多窗口趋势提取 & $\mathbf{X}\rightarrow\{\mathbf{T}_1,\mathbf{T}_2,\mathbf{T}_3\}$ & 使用 $k=3,11,37$ 的滑动平均 & 得到不同平滑程度的趋势候选 \\
+        样本级统计 & $\mathbf{X}\rightarrow g^{(b)}$ & 在时间维和变量维求全局均值 & 提取样本整体尺度信息 \\
+        门控权重生成 & $g^{(b)}\rightarrow\boldsymbol{\alpha}^{(b)}$ & Linear$(1,3)$ 与 Softmax & 为三个窗口生成归一化融合权重 \\
+        趋势融合 & $\{\mathbf{T}_j\},\boldsymbol{\alpha}\rightarrow\mathbf{T}$ & 加权求和 & 形成自适应趋势估计 \\
+        季节项计算 & $\mathbf{X},\mathbf{T}\rightarrow\mathbf{S}$ & $\mathbf{S}=\mathbf{X}-\mathbf{T}$ & 得到剩余季节或局部波动成分 \\
+        \bottomrule
+    \end{tabular}}
+\end{table}
 
 该模块的特点是结构较轻，只在原有移动平均分解基础上增加了多窗口并行和一个小型门控网络。门控层初始化时使不同窗口权重接近均匀分布，从而减少新增模块对训练初期模型状态的扰动。与固定单窗口相比，多核门控分解能够根据样本级输入特征调整不同尺度趋势估计的贡献，因此更适合处理周期结构复杂的数据。该模块的具体效果将在第 4 章通过 M2 变体进行验证。
 从结构解释性看，多核门控分解仍然保留了移动平均分解的直观含义。每一个窗口都对应一种可理解的趋势估计方式，门控权重则反映当前样本对不同窗口的依赖程度。与完全由深层网络学习隐式分解相比，这种形式更容易和趋势、季节项的概念对应起来。不过，该模块也有局限。样本级全局均值只能提供整体层面的自适应，不能针对每个时间点或每个变量分别选择窗口；当序列内部不同时段的变化尺度差异很大时，单个样本级权重可能仍然不够细致。因此，本文将其定位为轻量增强，而不是对分解机制的彻底重构。
@@ -99,6 +195,7 @@
     \caption{多核门控分解模块结构图}
     \label{fig:multi_gated_decomposition}
 \end{figure}
+\FloatBarrier
 
 \section{通道混合模块}
 \esection{Channel Mixing Module}
@@ -113,9 +210,33 @@
 实现时，该 MLP 作用在变量维度 $C$ 上，即对每个时间步的变量向量进行低秩映射。
 其中
 \begin{equation}
-    f_{cm}(\mathbf{X}) = \mathbf{W}_2 \cdot \mathrm{GELU}(\mathbf{W}_1 \mathbf{X}).
+    f_{cm}(\mathbf{X}_{b,t,:}) = \mathbf{W}_2 \,\mathrm{GELU}(\mathbf{W}_1 \mathbf{X}_{b,t,:}+\mathbf{b}_1)+\mathbf{b}_2.
 \end{equation}
-具体而言，第一层线性映射将变量维度从 $C$ 降到 $\min(64,C)$，第二层再映射回原变量维度。这样可以在控制参数量的同时完成一次变量间信息交换。
+具体而言，第一层线性映射将变量维度从 $C$ 降到 $r=\min(64,C)$，第二层再映射回原变量维度，因此 $\mathbf{W}_1\in\mathbb{R}^{r\times C}$，$\mathbf{W}_2\in\mathbb{R}^{C\times r}$。这样可以在控制参数量的同时完成一次变量间信息交换。
+
+从前向流程看，通道混合并不是在预测输出阶段额外修正结果，而是作用于每个尺度归一化后的输入表示。对第 $i$ 个尺度的序列 $\mathbf{X}^{i}\in\mathbb{R}^{B\times T_i\times C}$，模型先进行归一化，得到 $\bar{\mathbf{X}}^{i}$；若启用通道混合，则计算：
+\begin{equation}
+    \tilde{\mathbf{X}}^{i}=\bar{\mathbf{X}}^{i}+f_{cm}(\bar{\mathbf{X}}^{i}).
+\end{equation}
+随后，当采用通道独立建模时，$\tilde{\mathbf{X}}^{i}$ 再被重排为 $(B\cdot C,T_i,1)$，送入嵌入层和后续 PDM 模块。因此，M3 的作用位置早于通道独立拆分，它为每个变量的后续独立建模提前注入一次来自其他变量的信息。
+
+\begin{table}[htbp]
+    \centering
+    \caption{通道混合模块运行流程}
+    \label{tab:m3_flow}
+    \resizebox{\textwidth}{!}{%
+    \begin{tabular}{@{}C{0.16\textwidth}C{0.28\textwidth}C{0.28\textwidth}L{0.22\textwidth}@{}}
+        \toprule
+        \multicolumn{1}{c}{步骤} & \multicolumn{1}{c}{输入输出} & \multicolumn{1}{c}{操作} & \multicolumn{1}{c}{作用} \\
+        \midrule
+        多尺度归一化 & $\mathbf{X}^{i}\rightarrow\bar{\mathbf{X}}^{i}$ & 对各尺度输入进行标准化处理 & 减少尺度差异对后续模块的影响 \\
+        低秩映射 & $(B,T_i,C)\rightarrow(B,T_i,r)\rightarrow(B,T_i,C)$ & Linear、GELU、Linear & 在变量维度上进行浅层信息交互 \\
+        残差融合 & $\bar{\mathbf{X}}^{i}+f_{cm}(\bar{\mathbf{X}}^{i})$ & 将混合结果加回原表示 & 保留原始变量信息，降低训练扰动 \\
+        通道拆分 & $(B,T_i,C)\rightarrow(B\cdot C,T_i,1)$ & 通道独立重排 & 进入 TimeMixer 后续嵌入和 PDM 主干 \\
+        \bottomrule
+    \end{tabular}}
+\end{table}
+
 通道混合层采用残差形式，目的是避免新增模块对原始输入造成过强扰动。初始化时，残差分支输出接近于零，使训练开始时该模块近似恒等映射。该模块的具体效果将在第 4 章通过 M3 及相关组合变体进行分析。
 \begin{figure}[htbp]
     \centering
@@ -123,30 +244,9 @@
     \caption{通道混合模块结构图}
     \label{fig:channel_mixing_module}
 \end{figure}
+\FloatBarrier
 
-\section{模型变体与消融设计}
-\esection{Model Variants and Ablation Design}
+\section{本章小结}
+\esection{Summary}
 
-为了分析三个模块的独立贡献和组合效果，本文构造了 8 个模型变体，如表 \ref{tab:variants} 所示。其中 M0 表示 TimeMixer 基线模型，M1、M2、M3 分别表示只加入一个模块，M12、M13、M23 表示两两组合，M4 表示三个模块全部加入。
-
-\begin{table}[htbp]
-    \centering
-    \caption{模型变体设置表}
-    \label{tab:variants}
-    \begin{tabular}{ccccc}
-        \toprule
-        变体 & 深度可分离下采样A & 多核门控分解B & 通道混合C & 含义 \\
-        \midrule
-        M0 & 否 & 否 & 否 & TimeMixer 基线 \\
-        M1 & 是 & 否 & 否 & 仅替换下采样 \\
-        M2 & 否 & 是 & 否 & 仅替换分解模块 \\
-        M3 & 否 & 否 & 是 & 仅加入通道混合 \\
-        M12 & 是 & 是 & 否 & A+B \\
-        M13 & 是 & 否 & 是 & A+C \\
-        M23 & 否 & 是 & 是 & B+C \\
-        M4 & 是 & 是 & 是 & 三模块完整模型 \\
-        \bottomrule
-    \end{tabular}
-\end{table}
-
-这种设计覆盖了三个二值模块的全部组合。通过 M0 与 M1、M2、M3 的比较，可以观察单个模块独立加入后的效果；通过 M4 与 M12、M13、M23 的比较，可以观察完整模型去掉某个模块后的变化；通过所有变体的总体胜出次数，可以判断哪一类改进更稳定。本文后续实验结论显示，模块组合并不一定带来线性叠加收益，这也是本文结果分析中的一个重要发现。
+本章在原始 TimeMixer 多尺度分解混合框架基础上，分别从多尺度构建、趋势/季节分解和多变量处理三个环节设计了深度可分离卷积下采样、多核门控分解和通道混合模块。三个模块均保持输入输出形式不变，并以轻量化为设计约束嵌入原模型主干。其中，M1 使下采样由固定平均变为可学习局部特征提取，M2 通过多窗口趋势候选和样本级门控提升分解适应性，M3 则在通道独立建模前补充浅层变量交互。本章还给出了整体前向过程、张量维度和复杂度说明，为第 4 章的模型变体设置和消融实验分析提供了方法基础。

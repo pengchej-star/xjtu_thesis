@@ -1,0 +1,20 @@
+\begin{table}[htbp]
+    \centering
+    \caption{组合消融平均结果（最优加粗，次优下划线）}
+    \label{tab:combined_module_avg}
+    \begin{tabular*}{\textwidth}{@{\extracolsep{\fill}}c*{10}{c}@{}}
+        \toprule
+        数据集 & \multicolumn{2}{c}{M0} & \multicolumn{2}{c}{M12} & \multicolumn{2}{c}{M13} & \multicolumn{2}{c}{M23} & \multicolumn{2}{c}{M4} \\
+        & MSE & MAE & MSE & MAE & MSE & MAE & MSE & MAE & MSE & MAE \\
+        \midrule
+        ETTh1 & \textbf{0.462} & \textbf{0.446} & \underline{0.466} & \underline{0.451} & 0.496 & 0.471 & 0.478 & 0.457 & 0.469 & 0.453 \\
+        ETTh2 & \textbf{0.387} & \textbf{0.408} & 0.449 & 0.444 & 0.554 & 0.495 & \underline{0.413} & \underline{0.423} & 0.415 & 0.426 \\
+        ETTm1 & \textbf{0.386} & \textbf{0.399} & \underline{0.394} & \underline{0.403} & 0.408 & 0.414 & 0.403 & 0.413 & 0.402 & 0.411 \\
+        ETTm2 & \textbf{0.278} & \textbf{0.325} & 0.358 & 0.374 & 0.301 & 0.342 & \underline{0.285} & \underline{0.329} & 0.293 & 0.338 \\
+        Weather & 0.245 & \textbf{0.276} & \underline{0.243} & \underline{0.277} & 0.244 & 0.280 & 0.245 & \textbf{0.276} & \textbf{0.242} & 0.280 \\
+        ECL & \textbf{0.183} & \textbf{0.273} & 0.192 & \underline{0.282} & 0.199 & 0.294 & \underline{0.185} & \underline{0.282} & 0.189 & 0.286 \\
+        Traffic & \textbf{0.509} & \textbf{0.314} & \underline{0.525} & \underline{0.344} & 0.547 & 0.370 & 0.529 & 0.359 & 0.528 & 0.355 \\
+        Solar & 0.233 & 0.291 & \underline{0.214} & \textbf{0.264} & 0.223 & 0.296 & \underline{0.214} & \underline{0.278} & \textbf{0.208} & 0.286 \\
+        \bottomrule
+    \end{tabular*}
+\end{table}

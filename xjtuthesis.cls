@@ -121,7 +121,7 @@
 % l10n here
 \renewcommand{\tablename}{表}
 \renewcommand{\figurename}{图}
-\renewcommand{\bibname}{\vskip -0.5em 参考文献}
+\renewcommand{\bibname}{参考文献}
 \renewcommand\@biblabel[1]{{[#1]\hfill}}
 \renewcommand\contentsname{目\quad 录}
 \renewcommand\thefigure{% thanks to fitsir<at>gmail.com
@@ -674,7 +674,7 @@
         \setlength{\bibsep}{0.0pt}
         \begin{spacing}{1.2}
             \wuhao
-            \bibliographystyle{gbt7714-numerical}
+            \bibliographystyle{gbt7714-numeric}
             \bibliography{#1}
         \end{spacing}
         \clearpage
@@ -690,7 +690,7 @@
     % booktabs parameters
     \setlength\cmidrulewidth {1.0pt}
     \setlength\lightrulewidth{1.0pt}
-    \setlength\heavyrulewidth{2.0pt} % or 2.25pt
+    \setlength\heavyrulewidth{1.5pt}
 
     \fancypagestyle{plain}{%
       \setlength{\voffset}{1.8cm}
@@ -915,7 +915,7 @@
         \setlength{\bibsep}{0pt}
         \begin{spacing}{1.2}
         \wuhao
-        \bibliographystyle{gbt7714-numerical}
+        \bibliographystyle{gbt7714-numeric}
         \bibliography{#1}
         \end{spacing}
         \clearpage

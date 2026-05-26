@@ -1,7 +1,7 @@
 % theory.tex
 
-\chapter{相关理论与原始TimeMixer模型}
-\echapter{Related Theory and Original TimeMixer Model}
+\chapter{相关理论与技术}
+\echapter{Related Theory and Techniques}
 
 \section{时序数据预测任务定义}
 \esection{Definition of Time Series Forecasting}
@@ -49,7 +49,7 @@
 \section{原始TimeMixer模型结构}
 \esection{Original TimeMixer Architecture}
 
-TimeMixer 是一种基于多尺度分解混合思想的时间序列预测模型\cite{wang2023timemixer}。它没有采用复杂的自注意力结构，而是通过多尺度序列构建、过去可分解混合模块和未来多尺度预测融合模块完成预测。原始模型整体结构如图 \ref{fig:timemixer_overall} 所示。
+TimeMixer\cite{wang2023timemixer} 是一种基于多尺度分解混合思想的时间序列预测模型。它没有采用复杂的自注意力结构，而是通过多尺度序列构建、过去可分解混合模块和未来多尺度预测融合模块完成预测。原始模型整体结构如图 \ref{fig:timemixer_overall} 所示。
 
 \begin{figure}[htbp]
     \centering
@@ -58,34 +58,82 @@ TimeMixer 是一种基于多尺度分解混合思想的时间序列预测模型\
     \label{fig:timemixer_overall}
 \end{figure}
 
+从整体流程看，TimeMixer 的输入为长度为 $P$、变量数为 $C$ 的历史序列 $\mathbf{X}\in\mathbb{R}^{P\times C}$，输出为长度为 $F$ 的未来预测序列 $\hat{\mathbf{Y}}\in\mathbb{R}^{F\times C}$。模型首先通过下采样得到一组不同时间分辨率的历史序列，再对这些序列进行嵌入和多层 PDM 处理，最后由 FMM 汇总不同尺度上的预测结果。该流程可以概括为表 \ref{tab:timemixer_workflow}。
+
+\begin{table}[htbp]
+    \centering
+    \caption{原始TimeMixer模型工作流程}
+    \label{tab:timemixer_workflow}
+    \resizebox{\textwidth}{!}{%
+    \begin{tabular}{@{}C{0.16\textwidth}L{0.25\textwidth}L{0.31\textwidth}L{0.24\textwidth}@{}}
+        \toprule
+        \multicolumn{1}{c}{阶段} & \multicolumn{1}{c}{输入与输出} & \multicolumn{1}{c}{主要操作} & \multicolumn{1}{c}{作用} \\
+        \midrule
+        多尺度序列构建 & 输入原始历史序列，输出多个时间分辨率的序列集合 & 通过平均池化逐级下采样，并对各尺度序列进行嵌入 & 将复杂时间变化拆分到细粒度和粗粒度尺度中 \\
+        过去可分解混合 & 输入多尺度历史表示，输出混合后的多尺度表示 & 对每个尺度分解季节项和趋势项，分别进行跨尺度混合 & 从历史观测中提取细节波动和宏观趋势信息 \\
+        未来多尺度预测融合 & 输入最终多尺度表示，输出未来预测序列 & 每个尺度设置独立预测器，并将多个尺度预测结果相加融合 & 利用不同尺度预测器的互补能力形成最终预测 \\
+        \bottomrule
+    \end{tabular}}
+\end{table}
+
 \subsection{多尺度序列构建}
 \esubsection{Multi-scale Sequence Construction}
 
-TimeMixer 首先对输入序列进行多尺度处理。给定原始输入 $\mathbf{X}$，模型通过下采样得到多个不同长度的序列：
+TimeMixer 首先对输入序列进行多尺度处理。原文指出，不同采样尺度下的时间序列往往呈现不同性质：细尺度更容易保留局部细节和短期波动，粗尺度则更突出长期变化和宏观趋势。因此，TimeMixer 没有只在单一时间分辨率上建模，而是先通过平均池化生成多尺度历史观测。给定原始输入 $\mathbf{X}$，模型通过下采样得到多个不同长度的序列：
 \begin{equation}
     \{\mathbf{X}^{0}, \mathbf{X}^{1}, \cdots, \mathbf{X}^{M}\},
 \end{equation}
 其中 $\mathbf{X}^{0}$ 为原始尺度，$\mathbf{X}^{i}$ 表示第 $i$ 个下采样尺度，$M$ 为下采样层数。随着尺度加深，序列长度逐渐缩短，时间分辨率降低。
 
-原始 TimeMixer 默认下采样方式为平均池化。平均池化的优点是实现简单且不会引入额外参数，但它对局部窗口内的所有时间点进行等权平均。对于时序数据预测任务，这种方式能够平滑噪声，但也可能削弱局部突变。本文的第一个改进模块正是围绕这一环节展开。
+更具体地说，若原始输入长度为 $P$，第 $m$ 个尺度的序列长度约为 $\lfloor P/2^m\rfloor$，可表示为：
+\begin{equation}
+    \mathbf{X}_{ms}=\{\mathbf{x}_0,\mathbf{x}_1,\cdots,\mathbf{x}_M\},\quad
+    \mathbf{x}_m\in \mathbb{R}^{\lfloor P/2^m\rfloor\times C}.
+\end{equation}
+其中 $\mathbf{x}_0$ 对应原始输入，保留最完整的时间细节；$\mathbf{x}_M$ 对应最粗尺度，更强调长时间范围内的变化轮廓。得到多尺度序列后，模型通过嵌入层将其投影到深层特征空间，形成后续 PDM 模块的输入表示。
+
+这一设计的关键意义在于：多尺度序列不是简单地复制输入，而是为模型提供了不同时间粒度下的观察角度。对于局部波动明显的数据，细尺度序列可以保留较多短期变化；对于长期趋势明显的数据，粗尺度序列能够减少局部噪声干扰，使趋势更清晰。原始 TimeMixer 默认下采样方式为平均池化。平均池化的优点是实现简单且不会引入额外参数，但它对局部窗口内的所有时间点进行等权平均。对于时序数据预测任务，这种方式能够平滑噪声，但也可能削弱局部突变。本文的第一个改进模块正是围绕这一环节展开。
 
 \subsection{过去可分解混合模块}
 \esubsection{Past-Decomposable-Mixing Block}
 
-过去可分解混合模块是 TimeMixer 的核心部分。该模块首先对各尺度序列进行趋势项和季节项分解，然后分别对两类成分进行跨尺度混合。对于每个尺度的输入 $\mathbf{X}^{i}$，可分解为：
+过去可分解混合模块是 TimeMixer 的核心部分。原文认为，即使经过下采样，粗尺度序列中仍然可能同时包含趋势变化和季节波动；如果直接把多尺度序列作为整体混合，模型难以区分不同成分的性质。因此，PDM 先对每个尺度的表示进行序列分解，再分别混合季节项和趋势项。对于第 $l$ 层 PDM 中第 $m$ 个尺度的输入 $\mathbf{x}_m^{l}$，分解过程可表示为：
 \begin{equation}
-    \mathbf{X}^{i} = \mathbf{S}^{i} + \mathbf{T}^{i},
+    \mathbf{s}_m^{l},\mathbf{t}_m^{l}=\mathrm{SeriesDecomp}(\mathbf{x}_m^{l}),
 \end{equation}
-其中 $\mathbf{S}^{i}$ 为季节项，$\mathbf{T}^{i}$ 为趋势项。
+其中 $\mathbf{s}_m^{l}$ 为季节项或局部波动成分，$\mathbf{t}_m^{l}$ 为趋势项。分解操作通常基于移动平均，将较平滑的部分作为趋势，将剩余部分作为季节或残差。
 
-TimeMixer 对季节项采用自底向上的混合方式。高分辨率序列保留更多局部变化信息，因此季节项从高分辨率向低分辨率传递，有助于将细粒度波动逐步融入较粗尺度表示。相反，趋势项主要反映长期变化方向，模型采用自顶向下的混合方式，让低分辨率中的宏观趋势信息回传到高分辨率表示中。这种双向混合结构使模型能够在不使用复杂注意力机制的情况下整合多个时间尺度的信息。
+TimeMixer 对季节项采用自底向上的混合方式。高分辨率序列保留更多局部变化信息，原文将其理解为更细粒度的季节性细节。因此，季节项从高分辨率向低分辨率传递，有助于将细粒度波动逐步融入较粗尺度表示。对于相邻两个尺度，季节项混合可以写成：
+\begin{equation}
+    \mathbf{s}_m^{l}=\mathbf{s}_m^{l}+\mathrm{BottomUpMixing}(\mathbf{s}_{m-1}^{l}),\quad m=1,\cdots,M.
+\end{equation}
+其中 $\mathrm{BottomUpMixing}(\cdot)$ 可由沿时间维度的线性层和 GELU 激活构成，其输入长度对应较细尺度，输出长度对应较粗尺度。通过这种方式，低层细尺度中的局部周期和短期波动被逐级传递到高层尺度中。
+
+与季节项相反，趋势项主要反映较长时间范围内的变化方向。细尺度中包含较多局部波动，这些波动对宏观趋势估计可能形成干扰；粗尺度经过下采样后更容易呈现整体趋势。因此，TimeMixer 对趋势项采用自顶向下的混合方式，让低分辨率中的宏观趋势信息回传到高分辨率表示中：
+\begin{equation}
+    \mathbf{t}_m^{l}=\mathbf{t}_m^{l}+\mathrm{TopDownMixing}(\mathbf{t}_{m+1}^{l}),\quad m=M-1,\cdots,0.
+\end{equation}
+其中 $\mathrm{TopDownMixing}(\cdot)$ 同样由时间维度上的线性映射和非线性激活实现，但其信息方向与季节项相反，由粗尺度指向细尺度。经过季节项和趋势项的分别混合后，PDM 将两类成分重新组合，并通过前馈网络进行通道方向的信息交互和残差更新。简化地看，第 $l$ 层 PDM 的输出可表示为：
+\begin{equation}
+    \mathbf{X}^{l+1}=\mathbf{X}^{l}+\mathrm{FeedForward}\big(\mathrm{S\mbox{-}Mix}(\mathbf{S}^{l})+\mathrm{T\mbox{-}Mix}(\mathbf{T}^{l})\big).
+\end{equation}
+其中 $\mathrm{S\mbox{-}Mix}(\cdot)$ 表示季节项自底向上混合，$\mathrm{T\mbox{-}Mix}(\cdot)$ 表示趋势项自顶向下混合。这样的双向分解混合结构是 TimeMixer 区别于普通多尺度拼接或直接混合方法的关键。
 
 \subsection{未来多尺度预测融合模块}
 \esubsection{Future-Multipredictor-Mixing Block}
 
-经过过去可分解混合模块后，模型获得多个尺度的隐表示。未来多尺度预测融合模块分别对不同尺度表示进行预测，再将这些预测结果融合为最终输出。直观地说，不同尺度的预测器关注的信息不同：高分辨率尺度更关注短期变化，低分辨率尺度更关注长周期趋势。将它们组合起来，可以提升模型对复杂序列的适应能力。
+经过多层 PDM 后，模型获得多个尺度的历史表示：
+\begin{equation}
+    \mathbf{X}^{L}=\{\mathbf{x}_0^{L},\mathbf{x}_1^{L},\cdots,\mathbf{x}_M^{L}\}.
+\end{equation}
+由于不同尺度中保留的信息不同，它们在未来预测阶段也具有不同能力。高分辨率尺度更关注短期细节，粗分辨率尺度更关注宏观趋势。TimeMixer 因此没有只使用最后一个尺度或简单拼接所有尺度，而是在 FMM 中为每个尺度设置独立预测器，再将多个预测器的输出相加得到最终结果：
+\begin{equation}
+    \hat{\mathbf{Y}}_m=\mathrm{Predictor}_m(\mathbf{x}_m^{L}),\quad
+    \hat{\mathbf{Y}}=\sum_{m=0}^{M}\hat{\mathbf{Y}}_m.
+\end{equation}
+其中 $\hat{\mathbf{Y}}_m\in\mathbb{R}^{F\times C}$ 表示第 $m$ 个尺度给出的未来预测，$\hat{\mathbf{Y}}$ 为最终预测结果。每个预测器通常先沿时间维度将该尺度的历史长度映射到预测长度 $F$，再将深层特征投影回原始变量维度 $C$。
 
-原始 TimeMixer 的这种设计兼顾了表达能力和效率。它通过多尺度混合实现了类似“分而治之”的建模方式，同时避免了自注意力在较长输入窗口下可能带来的较高计算开销。由于原始结构本身已经较强，本文实验中 M0 基线仍然获得了较多最优次数，这一点在第 4 章实验分析中会进一步说明。
+FMM 的思想可以理解为多尺度预测器集成。单个尺度预测器只能利用某一时间分辨率下的历史表示，可能偏向局部波动或长期趋势中的某一方面；多个尺度预测器相加后，可以同时利用细尺度和粗尺度的互补信息。原始 TimeMixer 的这种设计兼顾了表达能力和效率。它通过多尺度混合实现了类似“分而治之”的建模方式，同时避免了自注意力在较长输入窗口下可能带来的较高计算开销。由于原始结构本身已经较强，本文实验中 M0 基线仍然获得了较多最优次数，这一点在第 4 章实验分析中会进一步说明。
 
 \section{原始模型不足分析}
 \esection{Limitations of the Original Model}
@@ -95,3 +143,8 @@ TimeMixer 对季节项采用自底向上的混合方式。高分辨率序列保�
 首先，多尺度构建中的平均池化下采样缺乏学习能力。对于较平滑的数据，平均池化可能有利于抑制噪声；但对于包含突发变化的数据，它可能平滑掉有用信息。其次，固定窗口分解难以同时适应不同周期。不同数据集和不同预测长度下，最合适的趋势窗口可能并不相同。最后，通道独立建模虽然提高了效率，却弱化了变量之间的信息交互。对于 Weather、Traffic 等多变量数据集，这一点可能影响模型充分利用变量间关系。
 
 因此，本文第 3 章分别从下采样、分解和变量交互三个角度提出改进模块。需要强调的是，这三个模块并不一定简单叠加后就能得到最优结果。本文通过 8 个变体的完整消融实验，对各模块的独立贡献和组合效果进行了分析。
+
+\section{本章小结}
+\esection{Summary}
+
+本章首先给出了多变量多步时序预测任务的基本定义，说明了输入长度、预测长度和变量维度在预测问题中的含义；随后介绍了时间序列分解方法和多尺度建模思想，分析了趋势项、季节项以及不同时间分辨率表示在长序列预测中的作用。在此基础上，本章进一步梳理了原始 TimeMixer 模型的多尺度序列构建、过去可分解混合和未来多尺度预测融合结构，并从平均池化下采样、固定窗口分解和通道独立处理三个方面总结了原模型可改进之处。这些内容为第 3 章提出深度可分离卷积下采样、多核门控分解和通道混合模块提供了理论和结构基础。

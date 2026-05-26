@@ -1,7 +1,7 @@
 % meta.tex
 
 % 标题，中文
-\ctitle{基于多尺度混合增强的时序数据预测模型研究与应用}
+\ctitle{基于多尺度混合增强的时序数据预测模型设计与实现}
 
 % 作者，中文
 \cauthor{荆鹏程}
@@ -33,7 +33,7 @@
 \ctype{}
 
 % 论文标题，英文
-\etitle{Research and Application of a Time Series Forecasting Model Enhanced by Multi-scale Mixing}
+\etitle{Design and Implementation of a Time Series Forecasting Model Enhanced by Multi-scale Mixing}
 
 % 作者姓名，英文
 \eauthor{Pengcheng Jing}
@@ -57,15 +57,15 @@
 \etype{}
 
 % 摘要，中文。段间空行
-\cabstract{时序数据预测是数据分析中的重要任务，在电力负荷调度、交通流量管理和气象预测等场景中具有广泛应用。TimeMixer 是一种轻量级多尺度时序预测模型，通过多尺度分解与混合机制在预测精度和计算效率之间取得了较好平衡。然而，原始 TimeMixer 仍存在平均池化下采样可能丢失高频信息、固定窗口分解难以适应复杂周期变化、通道独立策略忽略变量间相关性等问题。针对上述不足，本文围绕 TimeMixer 模型进行了多尺度混合增强设计与实验分析。
+\cabstract{时序数据预测是数据分析中的重要任务，在电力负荷调度、交通流量管理和气象预测等场景中具有广泛应用。TimeMixer 是一种轻量级多尺度时序预测模型，通过多尺度分解与混合机制在预测精度和计算效率之间取得了较好平衡。然而，原始 TimeMixer 仍存在平均池化下采样可能丢失高频信息、固定窗口分解难以适应复杂周期变化、通道独立策略忽略变量间相关性等问题。针对上述不足，本文基于 TimeMixer 模型进行了多尺度混合增强设计与实验分析。
 
 本文主要完成了三个方面的工作。首先，设计了深度可分离卷积下采样模块，以可学习卷积替代固定平均池化，使模型在构建多尺度序列时能够更灵活地保留局部关键特征。其次，提出了多核门控分解模块，并行使用多个不同窗口大小的滑动平均操作提取趋势信息，再根据样本级全局均值特征生成门控权重，融合不同尺度的分解结果，以增强模型对多周期模式的适应能力。最后，引入低秩 MLP 形式的通道混合模块，在多尺度序列进入通道独立建模前进行浅层变量交互，从而在保持模型轻量化的同时增强变量间信息利用能力。
 
-实验部分选取 ETTh1、ETTh2、ETTm1、ETTm2、Weather、ECL、Traffic 和 Solar 共 8 个公开数据集进行验证，预测长度设置为 96、192、336 和 720，评价指标采用 MSE 和 MAE。为分析不同模块的作用，本文以 TimeMixer 基线模型 M0 作为对照，构造了 M1、M2、M3、M12、M13、M23 和 M4 等改进变体，完成了全组合消融实验，并引入 TimeMixer 原论文公开结果，与多类典型时序预测模型进行参考性对比。实验结果显示，M2 在 64 个 MSE/MAE 评价项中取得 22 次最优，M0 取得 19 次，M4 取得 5 次。结果表明，多核门控分解对 Traffic、ECL 等周期结构较复杂的数据更有帮助；深度可分离下采样和通道混合在部分场景中取得较好结果，但跨数据集表现波动较大；完整模型 M4 并未因包含全部模块而取得最多最优项。本文工作从实验角度分析了多尺度混合增强在时序预测模型中的作用，并揭示了不同改进模块之间可能存在的耦合影响。}
+实验部分选取 ETTh1、ETTh2、ETTm1、ETTm2、Weather、ECL、Traffic 和 Solar 共 8 个公开数据集进行验证，预测长度设置为 96、192、336 和 720，评价指标采用 MSE 和 MAE。为分析不同模块的作用，本文以 TimeMixer 基线模型 M0 作为对照，构造了 M1、M2、M3、M12、M13、M23 和 M4 等改进变体，完成了全组合消融实验，并引入 TimeMixer 原论文公开结果，与多类典型时序预测模型进行参考性对比。实验结果显示，在并列最优均计入的统计方式下，M2 在 64 个 MSE 和 MAE 评价项中取得 23 次最优，M0 取得 19 次，M4 取得 5 次。结果表明，多核门控分解对 Traffic、ECL 等周期结构较复杂的数据更有帮助；深度可分离下采样和通道混合在部分场景中取得较好结果，但跨数据集表现波动较大；完整模型 M4 并未因包含全部模块而取得最多最优项。本文工作从实验角度分析了多尺度混合增强在时序预测模型中的作用，并揭示了不同改进模块之间可能存在的耦合影响。}
 
 % 摘要，英文。段间空行
 \eabstract{Time series forecasting is an important task in data analysis and has been widely used in electric load scheduling, traffic flow management, weather forecasting, and other real-world applications. TimeMixer is a lightweight multi-scale forecasting model that achieves a good balance between prediction accuracy and computational efficiency through multi-scale decomposition and mixing. However, the original TimeMixer still has several limitations. Average pooling used in the down-sampling stage may smooth out high-frequency information, fixed-window decomposition is not flexible enough to handle complex periodic patterns, and the channel-independent strategy ignores correlations among variables. To address these issues, this thesis enhances the TimeMixer model from the perspective of multi-scale mixing and analyzes the effects of different modules through experiments.
 
 The main work of this thesis includes three parts. First, a depthwise-separable convolution down-sampling module is designed to replace fixed average pooling with learnable convolutional operations, so that the model can preserve local key features more flexibly when constructing multi-scale sequences. Second, a multi-kernel gated decomposition module is proposed. It uses multiple moving-average kernels with different window sizes in parallel and generates sample-level gating weights from the global mean feature of each input sample, thereby fusing decomposition results at different scales. Third, a low-rank MLP-based channel mixing module is introduced before channel-independent modeling of multi-scale sequences to enhance interactions among variables while maintaining the lightweight structure of the model.
 
-Experiments are conducted on eight public datasets from ETT, Weather, ECL, Traffic, and Solar. The prediction lengths are set to 96, 192, 336, and 720, and MSE and MAE are used as evaluation metrics. In this thesis, M0 denotes the TimeMixer baseline, while M1, M2, M3, M12, M13, M23, and M4 denote different ablation variants with one or more improvement modules. Public results reported in the TimeMixer paper are further introduced as reference comparisons with several representative forecasting models. Under the setting of a fixed random seed 2021 and one experimental run, M2 obtains the best result in 22 out of 64 MSE/MAE evaluation items, while M0 and M4 obtain 19 and 5 best results, respectively. The results indicate that multi-kernel gated decomposition is more helpful for datasets with complex periodic patterns, such as Traffic and ECL. The depthwise-separable down-sampling and channel mixing modules perform well in some cases, but their results fluctuate more across datasets. The complete model M4 does not achieve the largest number of best results, suggesting possible coupling effects among the modules.}
+Experiments are conducted on eight public datasets from ETT, Weather, ECL, Traffic, and Solar. The prediction lengths are set to 96, 192, 336, and 720, and MSE and MAE are used as evaluation metrics. In this thesis, M0 denotes the TimeMixer baseline, while M1, M2, M3, M12, M13, M23, and M4 denote different ablation variants with one or more improvement modules. Public results reported in the TimeMixer paper are further introduced as reference comparisons with several representative forecasting models. When ties are counted for all tied variants, M2 obtains the best result in 23 out of 64 MSE and MAE evaluation items, while M0 and M4 obtain 19 and 5 best results, respectively. The results indicate that multi-kernel gated decomposition is more helpful for datasets with complex periodic patterns, such as Traffic and ECL. The depthwise-separable down-sampling and channel mixing modules perform well in some cases, but their results fluctuate more across datasets. The complete model M4 does not achieve the largest number of best results, suggesting possible coupling effects among the modules.}
