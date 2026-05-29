@@ -135,7 +135,15 @@ MSE 对较大误差更敏感，能够反映模型是否出现明显预测偏差�
     \parbox{\textwidth}{\wuhao 注：公开基线结果来自 TimeMixer 原论文，本文模型结果为本文实验所得；每行 MSE 和 MAE 分别标注最优加粗、次优下划线。}
 \end{table}
 
+\begingroup
+\setlength{\floatsep}{6pt plus 1pt minus 1pt}
+\setlength{\textfloatsep}{6pt plus 1pt minus 1pt}
+\setlength{\intextsep}{6pt plus 1pt minus 1pt}
+\setlength{\abovecaptionskip}{2pt}
+\setlength{\belowcaptionskip}{2pt}
+\renewcommand{\arraystretch}{0.92}
 \input{tables/external_baseline_details.tex}
+\endgroup
 \FloatBarrier
 
 从表 \ref{tab:external_avg} 可以看出，TimeMixer 基线 M0 在 ETTh1、ETTm2、ECL 等数据集上的平均误差接近或低于多类公开基线。本文内部变体中，M2 在 Traffic、ECL、ETTm2 上的平均结果较好；M1 在 Solar 上平均误差较低，但在 ETTm2 和 Traffic 上误差上升；M4 在 Solar 和 Weather 上有一定优势，但在 Traffic 和 ETTh2 上不如 M0 或 M2。公开基线比较和内部消融结果共同表明，不同模块的收益与数据集特征有关。
